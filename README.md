@@ -386,7 +386,6 @@ Can also be written in assembly:
 ### Colours
 
 ```
-; Set RGB Mode
 10 00 00 IMM SEL E0 01 ; Set RGB mode
 
 ; Paint a load of colours
