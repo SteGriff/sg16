@@ -5,16 +5,38 @@
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 20px;
+    }
+    h1 {
+      margin: 0 0 12px 0;
+    }
+    p {
+      margin: 0 0 16px 0;
+    }
+    button {
+      padding: 8px 16px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
 <h1>RRRGGGBB</h1>
 <p>This 1-byte color packs the channels as RRR, GGG, BB 
     (i.e., 3 bits Red, 3 bits Green, 2 bits Blue = 8 bits total), so there are 256 colors.</p>
-<canvas id="gamut" width="640" height="880"></canvas>
+<p>
+    <button id="toggleBtn" onclick="toggleOrdering()">Switch to Numeric Ordering</button>
+</p>
+<div>
+    <canvas id="gamut"></canvas>
+</div>
 <script>
 const canvas = document.getElementById('gamut');
 const ctx = canvas.getContext('2d');
 const cellSize = 40;
+let isHueOrdering = true;
 
 function byteToRGB(v) {
   const r3 = (v >> 5) & 0b111;   // 0..7
@@ -50,75 +72,148 @@ function rgbToHSV(r, g, b) {
   return [h, s, v];
 }
 
-// Generate all colors with their properties
-const colors = [];
-for (let v = 0; v < 256; v++) {
-  const [r, g, b] = byteToRGB(v);
-  const [h, s, val] = rgbToHSV(r, g, b);
-  colors.push({ byteVal: v, r, g, b, h, s, v: val });
-}
-
-// Group colors into hue buckets (16 columns for spectrum)
-const hueBuckets = Array.from({ length: 16 }, () => []);
-
-for (const color of colors) {
-  let bucketIndex;
-  
-  if (color.s < 0.15) {
-    // Grayscale colors go to the rightmost column
-    bucketIndex = 15;
-  } else {
-    // Map hue (0-360) to columns 0-14
-    // Hue spectrum: Red(0) -> Orange(30) -> Yellow(60) -> Green(120) -> Cyan(180) -> Blue(240) -> Magenta(300) -> Red(360)
-    bucketIndex = Math.floor(color.h / 360 * 15);
-    if (bucketIndex >= 15) bucketIndex = 14;
+function drawHueOrdering() {
+  // Generate all colors with their properties
+  const colors = [];
+  for (let v = 0; v < 256; v++) {
+    const [r, g, b] = byteToRGB(v);
+    const [h, s, val] = rgbToHSV(r, g, b);
+    colors.push({ byteVal: v, r, g, b, h, s, v: val });
   }
+
+  // Group colors into hue buckets (16 columns for spectrum)
+  const hueBuckets = Array.from({ length: 16 }, () => []);
+
+  for (const color of colors) {
+    let bucketIndex;
+    
+    if (color.s < 0.15) {
+      // Grayscale colors go to the rightmost column
+      bucketIndex = 15;
+    } else {
+      // Map hue (0-360) to columns 0-14
+      // Hue spectrum: Red(0) -> Orange(30) -> Yellow(60) -> Green(120) -> Cyan(180) -> Blue(240) -> Magenta(300) -> Red(360)
+      bucketIndex = Math.floor(color.h / 360 * 15);
+      if (bucketIndex >= 15) bucketIndex = 14;
+    }
+    
+    hueBuckets[bucketIndex].push(color);
+  }
+
+  // Sort each bucket by saturation (high to low), then brightness (high to low)
+  for (const bucket of hueBuckets) {
+    bucket.sort((a, b) => {
+      if (Math.abs(a.s - b.s) > 0.05) return b.s - a.s;  // High saturation first
+      return b.v - a.v;  // Then brightness
+    });
+  }
+
+  // Calculate max rows needed
+  const maxRows = Math.max(...hueBuckets.map(b => b.length));
   
-  hueBuckets[bucketIndex].push(color);
+  // Resize canvas
+  canvas.width = 16 * cellSize;
+  canvas.height = maxRows * cellSize;
+  
+  // Clear canvas
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw colors column by column
+  for (let col = 0; col < 16; col++) {
+    const bucket = hueBuckets[col];
+    for (let row = 0; row < bucket.length; row++) {
+      const color = bucket[row];
+      const fill = `rgb(${color.r}, ${color.g}, ${color.b})`;
+      
+      ctx.fillStyle = fill;
+      ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
+      
+      // Draw hex label
+      const hex = color.byteVal.toString(16).toUpperCase().padStart(2, '0');
+      const lightness = (color.r * 0.299 + color.g * 0.587 + color.b * 0.114) / 255;
+      ctx.fillStyle = lightness > 0.5 ? '#000' : '#FFF';
+      ctx.font = '10px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(hex, col * cellSize + cellSize / 2, row * cellSize + cellSize / 2);
+    }
+  }
+
+  // Optional: draw grid lines
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+  for (let i = 0; i <= 16; i++) {
+    ctx.beginPath();
+    ctx.moveTo(i * cellSize, 0);
+    ctx.lineTo(i * cellSize, canvas.height);
+    ctx.stroke();
+  }
+  for (let i = 0; i <= maxRows; i++) {
+    ctx.beginPath();
+    ctx.moveTo(0, i * cellSize);
+    ctx.lineTo(canvas.width, i * cellSize);
+    ctx.stroke();
+  }
 }
 
-// Sort each bucket by saturation (high to low), then brightness (high to low)
-for (const bucket of hueBuckets) {
-  bucket.sort((a, b) => {
-    if (Math.abs(a.s - b.s) > 0.05) return b.s - a.s;  // High saturation first
-    return b.v - a.v;  // Then brightness
-  });
-}
+function drawNumericOrdering() {
+  // Resize canvas to 16x16 grid
+  canvas.width = 16 * cellSize;
+  canvas.height = 16 * cellSize;
+  
+  // Clear canvas
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-// Draw colors column by column
-for (let col = 0; col < 16; col++) {
-  const bucket = hueBuckets[col];
-  for (let row = 0; row < bucket.length; row++) {
-    const color = bucket[row];
-    const fill = `rgb(${color.r}, ${color.g}, ${color.b})`;
+  // Draw 16x16 grid with values 00-FF
+  for (let v = 0; v < 256; v++) {
+    const row = Math.floor(v / 16);
+    const col = v % 16;
+    
+    const [r, g, b] = byteToRGB(v);
+    const fill = `rgb(${r}, ${g}, ${b})`;
     
     ctx.fillStyle = fill;
     ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
     
     // Draw hex label
-    const hex = color.byteVal.toString(16).toUpperCase().padStart(2, '0');
-    const lightness = (color.r * 0.299 + color.g * 0.587 + color.b * 0.114) / 255;
+    const hex = v.toString(16).toUpperCase().padStart(2, '0');
+    const lightness = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
     ctx.fillStyle = lightness > 0.5 ? '#000' : '#FFF';
     ctx.font = '10px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(hex, col * cellSize + cellSize / 2, row * cellSize + cellSize / 2);
   }
+
+  // Draw grid lines
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+  for (let i = 0; i <= 16; i++) {
+    ctx.beginPath();
+    ctx.moveTo(i * cellSize, 0);
+    ctx.lineTo(i * cellSize, canvas.height);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(0, i * cellSize);
+    ctx.lineTo(canvas.width, i * cellSize);
+    ctx.stroke();
+  }
 }
 
-// Optional: draw grid lines
-ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-for (let i = 0; i <= 16; i++) {
-  ctx.beginPath();
-  ctx.moveTo(i * cellSize, 0);
-  ctx.lineTo(i * cellSize, canvas.height);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(0, i * cellSize);
-  ctx.lineTo(canvas.width, i * cellSize);
-  ctx.stroke();
+function toggleOrdering() {
+  isHueOrdering = !isHueOrdering;
+  const btn = document.getElementById('toggleBtn');
+  
+  if (isHueOrdering) {
+    btn.textContent = 'Switch to Numeric Ordering';
+    drawHueOrdering();
+  } else {
+    btn.textContent = 'Switch to Hue Ordering';
+    drawNumericOrdering();
+  }
 }
+
+// Initial draw
+drawHueOrdering();
 </script>
 </body>
 </html>
