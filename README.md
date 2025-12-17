@@ -1,6 +1,4 @@
-# A State Machine
-
-New name needed.
+# SG16 State Machine
 
 This is a whimsical primitive state machine based computing environment for writing 8 bit programs. This takes inspiration from uxn/varvara and other small computing experiments.
 
@@ -62,7 +60,9 @@ The display mode byte can be set to one of the following:
  + Target (TG)
  + Value (VL)
 
-Mental model: When PL is between PM and PX, and EV happens (to PL), do OP on TG with VL
+Mental model: When PL is between PM and PX, and EV happens (to PL), do OP on TG with VL.
+
+Currently, PM and PX are constrained to constant (literal) values rather than checking a variable.
 
 ### Precondition
 
@@ -72,18 +72,18 @@ The global state 0x10 starts as 00, so init instructions of the program would or
 
 | Byte | Assembly | Description
 | ---- | -------- | -----------
-| 00 | IM | Immediately 
-| 1x | AT | After x ticks
-| 21 | LC | On left click
-| 22 | RC | On right click
-| 23 | MC | On middle click
-| 2F | CL | On any click
-| 3x | KD | On x keydown (see Key IDs)
-| 4x | KU | On x keyup (see Key IDs)
-| 5x |    | RFU
-| 61 | ME | On mouse enter
-| 62 | ML | On mouse leave
-| 63 | MM | On mouse mouse? RFU
+| 00 | IMM | Immediately 
+| 1x | AXT | After x ticks
+| 21 | OLC | On left click
+| 22 | ORC | On right click
+| 23 | OMC | On middle click
+| 2F | OCL | On any click
+| 3x | KDx | On x keydown (see Key IDs)
+| 4x | KUx | On x keyup (see Key IDs)
+| 5x |     | RFU
+| 61 | OME | On mouse enter
+| 62 | OML | On mouse leave
+| 63 | OMM | On mouse mouse? RFU
 
 #### Ticks
 
@@ -102,15 +102,19 @@ Only a subset of keyboard keys will be registered:
 | E       | Enter/Return key
 | F       | Any key
 
+Assembly: `D0` is key 0 down, `UE` is enter key up, etc.
+
 ### Operations
 
-| 00  | Set to Literal
-| 01  | Set to Variable
-| 02  | Add Literal
-| 03  | Add Var
-| 04  | Subtract Literal
-| 05  | Subtract Var
-| 06+ | RFU
+| Byte | Assembly | Description
+| ---- | -------- | -----------
+| 00   | SEL | Set to Literal
+| 01   | SEV | Set to Variable
+| 02   | ADL | Add Literal
+| 03   | ADV | Add Var
+| 04   | SUL | Subtract Literal
+| 05   | SUV | Subtract Var
+| 06+  |     | RFU
 
 ## Example Program
 
@@ -118,15 +122,29 @@ Comments can be written after `;`
 
 ```
 ;PL PM PX EV OP TG VL
- 10 00 00 00 00 05 CC ; Init (global 0 is 0) immediately set Grid 5 to CC (204)
+ 10 00 00 00 00 05 01 ; Init (global 0 is 0) immediately set Grid 5 to 01
+ 10 00 00 00 00 03 E0 ; Init - set right column grid value decoratively
+ 10 00 00 00 00 07 FC ; 
+ 10 00 00 00 00 0B 1C ; 
+ 10 00 00 00 00 0F 03 ; 
  10 00 00 00 02 10 01 ; End init by adding 1 to global state
- 05 00 02 21 02 05 01 ; When grid 5 is between 0 and 2 and left clicked increment it
- 05 01 03 21 04 05 01 ; When grid 5 is between 1 and 3 and right clicked decrement it
+ 05 00 02 21 02 05 01 ; When grid 5 is 0 to 2, and left clicked increment it
+ 05 01 03 22 04 05 01 ; When grid 5 is 1 to 3, and right clicked decrement it
  00 00 00 21 01 E0 05 ; When grid 0 is clicked, set the display mode to the value of grid 5
 ```
 
+Can also be written in assembly:
 
-## Implementation
+```
+10 00 00 IMM SEL 05 01
+...
+10 00 00 IMM SEL 10 01
+05 00 02 OLC ADL 05 01
+05 01 03 ORC SUL 05 01
+00 00 00 OLC SEV E0 05
+```
+
+## Implementations
 
 ### Event Resolution
 
