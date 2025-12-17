@@ -272,6 +272,116 @@ Can also be written in assembly:
 0F 01 FF OLC SEL 0F 00 ; when cell 0F is above 00 and clicked, set to 00
 ```
 
+### Calculator
+
+```
+; States: 00=init, 01=getOp1, 02=getOp2, 03=calc
+; Variables: 11=operand1, 12=operand2, 13=sum, 14=diff
+
+; STATE 00: Init
+10 00 00 IMM SEL E0 02 ; set display mode to ASCII
+10 00 00 IMM SEL 0C 2B ; paint + in cell C (0x2B = +)
+10 00 00 IMM SEL 0D 2D ; paint - in cell D (0x2D = -)
+10 00 00 IMM SEL 00 30 ; paint 0 in cell 0
+10 00 00 IMM SEL 01 30 ; paint 0 in cell 1
+10 00 00 IMM SEL 11 FF ; init op1 to FF (null)
+10 00 00 IMM SEL 12 FF ; init op2 to FF (null)
+10 00 00 IMM SEL 13 00 ; init sum to 0
+10 00 00 IMM SEL 14 00 ; init diff to 0
+10 00 00 IMM SEL 10 01 ; go to state 01 (ready)
+
+; STATE 01: Get op 1 
+10 01 01 KDF SEV 11 E3 ; copy key to op1
+11 00 0F IMM SEV 00 E3 ; set grid 0 to E3
+11 00 0F IMM ADL 00 30 ; grid 0 -> ASCII
+11 00 0F IMM SEL 10 02 ; go state 2
+
+; STATE 02: Get op 2
+10 02 02 KDF SEV 12 E3 ; copy key to op1
+12 00 0F IMM SEV 01 E3 ; set grid 1 to E3
+12 00 0F IMM ADL 01 30 ; grid 1 -> ASCII
+12 00 0F IMM SEL 10 03 ; go state 3
+
+; Plus
+0C 00 FF OLC SEV 13 11 ; set sum = op1
+13 01 FF IMM ADV 13 12 ; sum += op2
+13 01 FF IMM ADL 13 30 ; sum -> ascii
+13 01 FF IMM SEV 05 13 ; display sum in grid 5
+13 01 FF IMM SEL 10 00 ; re-init
+
+; Minus
+0D 00 FF OLC SEV 14 11 ; set diff = op1
+14 01 FF IMM SUV 14 12 ; diff -= op2
+14 01 FF IMM ADL 14 30 ; diff -> ascii
+14 01 FF IMM SEV 05 14 ; display diff in grid 5
+14 01 FF IMM SEL 10 00 ; re-init
+```
+
+### Walkabout
+
+```
+; Variables: 11=position (grid index 0x00-0x0F)
+
+; STATE 00: Init
+10 00 00 IMM SEL E0 02 ; set display mode to ASCII
+10 00 00 IMM SEL 11 05 ; start at grid 5 (middle)
+10 00 00 IMM SEL 10 01 ; go to state 01 (ready)
+
+; Movement keys - update position
+10 01 FF KDA SUL 11 04 ; Up/W: move up (subtract 4)
+10 01 FF KDB ADL 11 04 ; Down/S: move down (add 4)
+10 01 FF KDC SUL 11 01 ; Left/A: move left (subtract 1)
+10 01 FF KDD ADL 11 01 ; Right/D: move right (add 1)
+
+; Display: draw O where position is, space everywhere else
+11 00 00 IMM SEL 00 4F ; if pos=0, draw O in cell 0
+11 01 0F IMM SEL 00 20 ; else draw space
+11 01 01 IMM SEL 01 4F ; if pos=1, draw O in cell 1
+11 00 00 IMM SEL 01 20 ; else draw space before
+11 02 FF IMM SEL 01 20 ; ...or after
+11 02 02 IMM SEL 02 4F ; if pos=2, draw O in cell 2
+11 00 01 IMM SEL 02 20 ; else draw space before
+11 03 FF IMM SEL 02 20 ; ...or after
+11 03 03 IMM SEL 03 4F ; if pos=3, draw O in cell 3
+11 00 02 IMM SEL 03 20 
+11 04 FF IMM SEL 03 20 
+11 04 04 IMM SEL 04 4F ; if pos=4, draw O in cell 4
+11 00 03 IMM SEL 04 20 
+11 05 FF IMM SEL 04 20 
+11 05 05 IMM SEL 05 4F ; if pos=5, draw O in cell 5
+11 00 04 IMM SEL 05 20 
+11 06 FF IMM SEL 05 20 
+11 06 06 IMM SEL 06 4F ; if pos=6, draw O in cell 6
+11 00 05 IMM SEL 06 20 
+11 07 FF IMM SEL 06 20 
+11 07 07 IMM SEL 07 4F ; if pos=7, draw O in cell 7
+11 00 06 IMM SEL 07 20 
+11 08 FF IMM SEL 07 20 
+11 08 08 IMM SEL 08 4F ; if pos=8, draw O in cell 8
+11 00 07 IMM SEL 08 20 
+11 09 FF IMM SEL 08 20 
+11 09 09 IMM SEL 09 4F ; if pos=9, draw O in cell 9
+11 00 08 IMM SEL 09 20 
+11 0A FF IMM SEL 09 20 
+11 0A 0A IMM SEL 0A 4F ; if pos=A, draw O in cell A
+11 00 09 IMM SEL 0A 20 
+11 0B FF IMM SEL 0A 20 
+11 0B 0B IMM SEL 0B 4F ; if pos=B, draw O in cell B
+11 00 0A IMM SEL 0B 20 
+11 0C FF IMM SEL 0B 20 
+11 0C 0C IMM SEL 0C 4F ; if pos=C, draw O in cell C
+11 00 0B IMM SEL 0C 20 
+11 0D FF IMM SEL 0C 20 
+11 0D 0D IMM SEL 0D 4F ; if pos=D, draw O in cell D
+11 00 0C IMM SEL 0D 20 
+11 0E FF IMM SEL 0D 20 
+11 0E 0E IMM SEL 0E 4F ; if pos=E, draw O in cell E
+11 00 0D IMM SEL 0E 20 
+11 0F FF IMM SEL 0E 20 
+11 0F 0F IMM SEL 0F 4F ; if pos=F, draw O in cell F
+11 00 0E IMM SEL 0F 20 
+11 00 FF IMM SEL 0F 20 
+```
 
 ## Implementations
 
