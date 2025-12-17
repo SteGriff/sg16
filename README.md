@@ -20,6 +20,8 @@ Imagine a 4x4 grid which is displayed on-screen but is also raw memory.
 
 The cell addresses are 0x0...
 
+| | | | |
+|-|-|-|-|
 | 0 | 1 | 2 | 3 |
 | 4 | 5 | 6 | 7 |
 | 8 | 9 | A | B |
@@ -50,6 +52,8 @@ The display mode byte can be set to one of the following:
 
 ### Instruction format
 
+Every line is 7 bytes:
+
 `PL PM PX EV OP TG VL`
 
  + PreconditionLocation (PL)
@@ -57,12 +61,14 @@ The display mode byte can be set to one of the following:
  + PreconditionMaxBound inclusive (PX)
  + Event (EV)
  + Operation (OP)
- + Target (TG)
- + Value (VL)
+ + Target (TG) - memory address 0x00 to 0xFF to target
+ + Value (VL) - literal or variable address depending on OP
 
 Mental model: When PL is between PM and PX, and EV happens (to PL), do OP on TG with VL.
 
 Currently, PM and PX are constrained to constant (literal) values rather than checking a variable.
+
+The PL does double duty as the gate to check for preconditions but also as the UI element in scope. To check for click (any mouse button) on grid square `00` use `00 00 FF 2F ...`
 
 ### Precondition
 
@@ -73,11 +79,11 @@ The global state 0x10 starts as 00, so init instructions of the program would or
 | Byte | Assembly | Description
 | ---- | -------- | -----------
 | 00 | IMM | Immediately 
-| 1x | AXT | After x ticks
+| 1x | AxT | After x ticks (one off event)
 | 21 | OLC | On left click
 | 22 | ORC | On right click
 | 23 | OMC | On middle click
-| 2F | OCL | On any click
+| 2F | OAC | On any click
 | 3x | KDx | On x keydown (see Key IDs)
 | 4x | KUx | On x keyup (see Key IDs)
 | 5x |     | RFU
@@ -102,21 +108,23 @@ Only a subset of keyboard keys will be registered:
 | E       | Enter/Return key
 | F       | Any key
 
-Assembly: `D0` is key 0 down, `UE` is enter key up, etc.
+Assembly: `KD0` is key 0 down, `KUE` is enter key up, etc.
 
 ### Operations
 
 | Byte | Assembly | Description
 | ---- | -------- | -----------
-| 00   | SEL | Set to Literal
-| 01   | SEV | Set to Variable
-| 02   | ADL | Add Literal
-| 03   | ADV | Add Var
+| 00   | SEL | Set TG to Literal VL
+| 01   | SEV | Set TG to the value of variable at VL
+| 02   | ADL | Add literal VL to TG
+| 03   | ADV | Add value of variable at VL to TG
 | 04   | SUL | Subtract Literal
-| 05   | SUV | Subtract Var
+| 05   | SUV | Subtract Variable
 | 06+  |     | RFU
 
-## Example Program
+## Example Programs
+
+### Display modes
 
 Comments can be written after `;`
 
@@ -144,15 +152,27 @@ Can also be written in assembly:
 00 00 00 OLC SEV E0 05
 ```
 
+### Timer
+
+```
+00 00 00 OLC SEL 00 01 ; Click to toggle grid 0 
+00 01 01 OLC SEL 00 00 ; toggle
+00 01 01 AFT ADL 01 01 ; when on, after F ticks (1 second), add 1 to grid 1
+```
+
 ## Implementations
 
 ### Event Resolution
 
 Priority:
 
-+ All the Immediate effects whose preconditions are met. 
++ All the Immediate effects whose preconditions are met, in the order they were instructed.
 + All the tick effects whose preconditions are met, as above.
 + Mouse events
 + Keyboard events
 
 Tie-breaker is "as-instructed" order, so the immediates nearer the start of the program happen before those written after, for example.
+
+### Overflow/Underflow
+
+Cap values at 00 and FF, don't wrap around or crash.
