@@ -1,6 +1,10 @@
 # SG16 State Machine
 
-This is a whimsical primitive state machine based computing environment for writing 8 bit programs. This takes inspiration from uxn/varvara and other small computing experiments.
+This is a whimsical primitive state machine based computing environment for writing 8 bit programs. 
+It takes inspiration from uxn/varvara and other small computing experiments.
+I know it's totally insane! It makes me laugh!
+
+[Try it now](./SG16-JS/)
 
 ## Memory
 
