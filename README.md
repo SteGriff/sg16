@@ -383,6 +383,36 @@ Can also be written in assembly:
 11 00 FF IMM SEL 0F 20 
 ```
 
+### Colours
+
+```
+; Set RGB Mode
+10 00 00 IMM SEL E0 01 ; Set RGB mode
+
+; Paint a load of colours
+10 00 00 IMM SEL 00 E0
+10 00 00 IMM SEL 01 EC
+10 00 00 IMM SEL 02 F8
+10 00 00 IMM SEL 03 FC
+10 00 00 IMM SEL 04 BC
+10 00 00 IMM SEL 05 1C
+10 00 00 IMM SEL 06 1E
+10 00 00 IMM SEL 07 3A
+10 00 00 IMM SEL 08 1B
+10 00 00 IMM SEL 09 0F
+10 00 00 IMM SEL 0A 07
+10 00 00 IMM SEL 0B 47
+10 00 00 IMM SEL 0C 63
+10 00 00 IMM SEL 0D C3
+10 00 00 IMM SEL 0E E2
+10 00 00 IMM SEL 0F E1
+
+10 00 00 IMM SEL 10 01 ; End init
+
+00 00 FF OLC SEL E0 00 ; Click grid 0 for hex 
+01 00 FF OLC SEL E0 01 ; Click grid 1 for rgb
+```
+
 ## Implementations
 
 ### Event Resolution
