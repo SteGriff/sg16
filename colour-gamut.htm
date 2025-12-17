@@ -9,14 +9,12 @@
 <body>
 <h1>RRRGGGBB</h1>
 <p>This 1-byte color packs the channels as RRR, GGG, BB 
-    (i.e., 3 bits Red, 3 bits Green, 2 bits Blue = 8 bits total), so there are 256 colors.
-    You can decode each byte, scale each channel to 8-bit, and then visualize the full colour space.</p>
-<canvas id="gamut" width="512" height="512"></canvas>
+    (i.e., 3 bits Red, 3 bits Green, 2 bits Blue = 8 bits total), so there are 256 colors.</p>
+<canvas id="gamut" width="640" height="880"></canvas>
 <script>
 const canvas = document.getElementById('gamut');
 const ctx = canvas.getContext('2d');
-
-const cell = 32;   // 16 x 16 grid, 32px squares -> 512px image
+const cellSize = 40;
 
 function byteToRGB(v) {
   const r3 = (v >> 5) & 0b111;   // 0..7
@@ -31,29 +29,94 @@ function byteToRGB(v) {
   return [r, g, b];
 }
 
+function rgbToHSV(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+  
+  let h = 0;
+  if (delta !== 0) {
+    if (max === r) h = ((g - b) / delta) % 6;
+    else if (max === g) h = (b - r) / delta + 2;
+    else h = (r - g) / delta + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  
+  const s = max === 0 ? 0 : delta / max;
+  const v = max;
+  
+  return [h, s, v];
+}
+
+// Generate all colors with their properties
+const colors = [];
 for (let v = 0; v < 256; v++) {
-  const row = v >> 4;          // high nibble
-  const col = v & 0xF;         // low nibble
-  
   const [r, g, b] = byteToRGB(v);
-  const fill = `rgb(${r}, ${g}, ${b})`;
-  console.log("Paint", v, fill);
+  const [h, s, val] = rgbToHSV(r, g, b);
+  colors.push({ byteVal: v, r, g, b, h, s, v: val });
+}
+
+// Group colors into hue buckets (16 columns for spectrum)
+const hueBuckets = Array.from({ length: 16 }, () => []);
+
+for (const color of colors) {
+  let bucketIndex;
   
-  ctx.fillStyle = fill;
-  ctx.fillRect(col * cell, row * cell, cell, cell);
+  if (color.s < 0.15) {
+    // Grayscale colors go to the rightmost column
+    bucketIndex = 15;
+  } else {
+    // Map hue (0-360) to columns 0-14
+    // Hue spectrum: Red(0) -> Orange(30) -> Yellow(60) -> Green(120) -> Cyan(180) -> Blue(240) -> Magenta(300) -> Red(360)
+    bucketIndex = Math.floor(color.h / 360 * 15);
+    if (bucketIndex >= 15) bucketIndex = 14;
+  }
+  
+  hueBuckets[bucketIndex].push(color);
+}
+
+// Sort each bucket by saturation (high to low), then brightness (high to low)
+for (const bucket of hueBuckets) {
+  bucket.sort((a, b) => {
+    if (Math.abs(a.s - b.s) > 0.05) return b.s - a.s;  // High saturation first
+    return b.v - a.v;  // Then brightness
+  });
+}
+
+// Draw colors column by column
+for (let col = 0; col < 16; col++) {
+  const bucket = hueBuckets[col];
+  for (let row = 0; row < bucket.length; row++) {
+    const color = bucket[row];
+    const fill = `rgb(${color.r}, ${color.g}, ${color.b})`;
+    
+    ctx.fillStyle = fill;
+    ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
+    
+    // Draw hex label
+    const hex = color.byteVal.toString(16).toUpperCase().padStart(2, '0');
+    const lightness = (color.r * 0.299 + color.g * 0.587 + color.b * 0.114) / 255;
+    ctx.fillStyle = lightness > 0.5 ? '#000' : '#FFF';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(hex, col * cellSize + cellSize / 2, row * cellSize + cellSize / 2);
+  }
 }
 
 // Optional: draw grid lines
 ctx.strokeStyle = 'rgba(0,0,0,0.15)';
 for (let i = 0; i <= 16; i++) {
   ctx.beginPath();
-  ctx.moveTo(i * cell, 0);
-  ctx.lineTo(i * cell, 16 * cell);
+  ctx.moveTo(i * cellSize, 0);
+  ctx.lineTo(i * cellSize, canvas.height);
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.moveTo(0, i * cell);
-  ctx.lineTo(16 * cell, i * cell);
+  ctx.moveTo(0, i * cellSize);
+  ctx.lineTo(canvas.width, i * cellSize);
   ctx.stroke();
 }
 </script>
