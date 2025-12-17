@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Gamut</title>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<h1>RRRGGGBB</h1>
+<p>This 1-byte color packs the channels as RRR, GGG, BB 
+    (i.e., 3 bits Red, 3 bits Green, 2 bits Blue = 8 bits total), so there are 256 colors.
+    You can decode each byte, scale each channel to 8-bit, and then visualize the full colour space.</p>
+<canvas id="gamut" width="512" height="512"></canvas>
+<script>
+const canvas = document.getElementById('gamut');
+const ctx = canvas.getContext('2d');
+
+const cell = 32;   // 16 x 16 grid, 32px squares -> 512px image
+
+function byteToRGB(v) {
+  const r3 = (v >> 5) & 0b111;   // 0..7
+  const g3 = (v >> 2) & 0b111;   // 0..7
+  const b2 =  v       & 0b11;    // 0..3
+
+  // Linear scaling
+  const r = Math.round(r3 * 255 / 7);
+  const g = Math.round(g3 * 255 / 7);
+  const b = Math.round(b2 * 255 / 3);
+
+  return [r, g, b];
+}
+
+for (let v = 0; v < 256; v++) {
+  const row = v >> 4;          // high nibble
+  const col = v & 0xF;         // low nibble
+  
+  const [r, g, b] = byteToRGB(v);
+  const fill = `rgb(${r}, ${g}, ${b})`;
+  console.log("Paint", v, fill);
+  
+  ctx.fillStyle = fill;
+  ctx.fillRect(col * cell, row * cell, cell, cell);
+}
+
+// Optional: draw grid lines
+ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+for (let i = 0; i <= 16; i++) {
+  ctx.beginPath();
+  ctx.moveTo(i * cell, 0);
+  ctx.lineTo(i * cell, 16 * cell);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(0, i * cell);
+  ctx.lineTo(16 * cell, i * cell);
+  ctx.stroke();
+}
+</script>
+</body>
+</html>
