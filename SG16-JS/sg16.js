@@ -53,7 +53,7 @@ class SG16VM {
     start() {
         this.running = true;
         
-        // Execute all immediate instructions
+        // Execute all immediate instructions once at startup
         this.executeImmediate();
         
         // Start tick timer (62.5ms = 1/16th second)
@@ -62,8 +62,10 @@ class SG16VM {
             this.processTicks();
         }, 62.5);
 
-        // Start render timer (60fps for smooth updates)
+        // Start update/render timer (60fps)
+        // Executes immediate instructions every frame and renders
         this.frameTimer = setInterval(() => {
+            this.executeImmediate();
             this.render();
         }, 16.67);
     }
