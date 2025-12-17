@@ -8,6 +8,7 @@ class SG16VM {
         this.tickTimer = null;
         this.frameTimer = null;
         this.tickEvents = []; // Track pending tick events
+        this.immediateEvents = []; // Track fired immediate events
         this.running = false;
         this.focused = false;
     }
@@ -17,6 +18,7 @@ class SG16VM {
         this.program = [];
         this.tickCounter = 0;
         this.tickEvents = [];
+        this.immediateEvents = [];
         this.stopTimers();
         this.running = false;
     }
@@ -53,19 +55,15 @@ class SG16VM {
     start() {
         this.running = true;
         
-        // Execute all immediate instructions once at startup
-        this.executeImmediate();
-        
         // Start tick timer (62.5ms = 1/16th second)
         this.tickTimer = setInterval(() => {
             this.tickCounter++;
-            this.processTicks();
+            this.executeImmediate(); // Check immediate events
+            this.processTicks();     // Check tick events
         }, 62.5);
 
-        // Start update/render timer (60fps)
-        // Executes immediate instructions every frame and renders
+        // Start render timer (60fps for smooth updates)
         this.frameTimer = setInterval(() => {
-            this.executeImmediate();
             this.render();
         }, 16.67);
     }
@@ -123,11 +121,26 @@ class SG16VM {
     }
 
     executeImmediate() {
+        // Immediate events fire once when precondition becomes true
+        // Similar to tick events but fire immediately (after 0 ticks)
         for (const instruction of this.program) {
             if (instruction.ev === 0x00) { // IMM
-                console.log(`Executing immediate instruction at PL ${instruction.pl.toString(16).toUpperCase()}`);
-                if (this.checkPrecondition(instruction)) {
+                const eventKey = `imm-${instruction.pl}-${instruction.pm}-${instruction.px}-${instruction.op}-${instruction.tg}-${instruction.vl}`;
+                
+                const preconditionMet = this.checkPrecondition(instruction);
+                const alreadyFired = this.immediateEvents.includes(eventKey);
+                
+                if (preconditionMet && !alreadyFired) {
+                    // Precondition just became true, fire the event
+                    console.log(`Executing immediate instruction at PL ${instruction.pl.toString(16).toUpperCase()}`);
                     this.executeOperation(instruction);
+                    this.immediateEvents.push(eventKey);
+                } else if (!preconditionMet && alreadyFired) {
+                    // Precondition no longer met, allow it to fire again when it becomes true
+                    const idx = this.immediateEvents.indexOf(eventKey);
+                    if (idx !== -1) {
+                        this.immediateEvents.splice(idx, 1);
+                    }
                 }
             }
         }

@@ -192,25 +192,34 @@ Can also be written in assembly:
 
 ```
 ; Let 11 be the cursor position 0-F
+; Let 12 be a copy of the lastKey struck or FF for null
 ; When a key 0-9 is struck, type the value of that key at the cursor position
+10 00 00 IMM SEL 12 FF ; init lastKey to null
 10 00 00 IMM SEL 10 01 ; finish init
 
-11 00 00 KDF SEV 00 E3 ; if cursor at 00, write key to grid 00
-11 01 01 KDF SEV 01 E3 ; if cursor at 01, write key to grid 01
-11 02 02 KDF SEV 02 E3 ; if cursor at 02, write key to grid 02
-11 03 03 KDF SEV 03 E3 ; if cursor at 03, write key to grid 03
-11 04 04 KDF SEV 04 E3 ; if cursor at 04, write key to grid 04
-11 05 05 KDF SEV 05 E3 ; if cursor at 05, write key to grid 05
-11 06 06 KDF SEV 06 E3 ; if cursor at 06, write key to grid 06
-11 07 07 KDF SEV 07 E3 ; if cursor at 07, write key to grid 07
-11 08 08 KDF SEV 08 E3 ; if cursor at 08, write key to grid 08
-11 09 09 KDF SEV 09 E3 ; if cursor at 09, write key to grid 09
-11 0A 0A KDF SEV 0A E3 ; if cursor at 0A, write key to grid 0A
-11 0B 0B KDF SEV 0B E3 ; if cursor at 0B, write key to grid 0B
-11 0C 0C KDF SEV 0C E3 ; if cursor at 0C, write key to grid 0C
-11 0D 0D KDF SEV 0D E3 ; if cursor at 0D, write key to grid 0D
-11 0E 0E KDF SEV 0E E3 ; if cursor at 0E, write key to grid 0E
-11 0F 0F KDF SEV 0F E3 ; if cursor at 0F, write key to grid 0F
+11 00 0F KDF SEV 12 E3 ; copy E3 to 12
+12 00 0F IMM ADL 11 01 ; advance cursor
+11 10 FF IMM SEL 11 00 ; or wrap around to 00
+12 00 FE IMM SEL 12 FF ; clear lastKey
+00 00 FF OLC SEL 12 FF ; "fix" by clicking grid 0 if broken, lol
+
+11 00 00 IMM SEV 00 E3 ; if cursor at 00, write key to grid 00
+11 01 01 IMM SEV 01 E3 ; if cursor at 01, write key to grid 01
+11 02 02 IMM SEV 02 E3 ; if cursor at 02, write key to grid 02
+11 03 03 IMM SEV 03 E3 ; if cursor at 03, write key to grid 03
+11 04 04 IMM SEV 04 E3 ; if cursor at 04, write key to grid 04
+11 05 05 IMM SEV 05 E3 ; if cursor at 05, write key to grid 05
+11 06 06 IMM SEV 06 E3 ; if cursor at 06, write key to grid 06
+11 07 07 IMM SEV 07 E3 ; if cursor at 07, write key to grid 07
+11 08 08 IMM SEV 08 E3 ; if cursor at 08, write key to grid 08
+11 09 09 IMM SEV 09 E3 ; if cursor at 09, write key to grid 09
+11 0A 0A IMM SEV 0A E3 ; if cursor at 0A, write key to grid 0A
+11 0B 0B IMM SEV 0B E3 ; if cursor at 0B, write key to grid 0B
+11 0C 0C IMM SEV 0C E3 ; if cursor at 0C, write key to grid 0C
+11 0D 0D IMM SEV 0D E3 ; if cursor at 0D, write key to grid 0D
+11 0E 0E IMM SEV 0E E3 ; if cursor at 0E, write key to grid 0E
+11 0F 0F IMM SEV 0F E3 ; if cursor at 0F, write key to grid 0F
+
 ```
 
 ### Paint
