@@ -6,9 +6,9 @@ This is a whimsical primitive state machine based computing environment for writ
 
 The memory is structured from 0x00 to 0xFF like so:
 
-0x0X - Grid-displayed memory
-0x1X - Non-displayed memory
-0xE0 - Display mode
+ + 0x0X - Grid-displayed memory
+ + 0x1X - Non-displayed memory
+ + 0xE0 - Display mode
 
 Other prefixed areas of memory are RFU.
 
@@ -34,9 +34,10 @@ The grid is the central UI element and takes up most of the screen in a UI imple
 ### 0x1X - Global variables
 
 0x10 is the global state and is special. See programs/preconditions.
+
 0x11 - 0x1F can be used as general variables.
 
-### 0xE0 Display Mode
+### 0xE0 - Display Mode
 
 The display mode byte can be set to one of the following:
 
@@ -47,14 +48,13 @@ The display mode byte can be set to one of the following:
 | 0x02 | ASCII - corresponding ASCII character for the value 0-255. Only show displayable values
 | 0x03 | Icons - display one of the custom 255 icons from a library (TBC)
 
-### 0xE2 - the click device
+### 0xE2 - Click buffer
 
-Contains the last click type set by event 2x (1, 2, or 3), see Events
+Contains the last click type set by event 2x (1, 2, or 3), see Events.
 
-### 0xE3 - the keyboard device 
+### 0xE3 - Key buffer
 
-Contains the last key set by event 3x or 4x - see Events and Key IDs
-
+Contains the last key set by event 3x or 4x - see Events and Key IDs.
 
 ## Programs
 
@@ -69,8 +69,8 @@ Every line is 7 bytes:
  + PreconditionMaxBound inclusive (PX)
  + Event (EV)
  + Operation (OP)
- + Target (TG) - memory address 0x00 to 0xFF to target
- + Value (VL) - literal or variable address depending on OP
+ + Target (TG) - memory address 0x00 to 0xFF
+ + Value (VL) - literal value or variable address depending on OP
 
 Mental model: When PL is between PM and PX, and EV happens (to PL), do OP on TG with VL.
 
@@ -78,7 +78,7 @@ Currently, PM and PX are constrained to constant (literal) values rather than ch
 
 ### Precondition
 
-The global state 0x10 starts as 00, so init instructions of the program would ordinarily all begin with `10 00 00`: "The Global State == 0"
+The global state 0x10 starts as 00, so init instructions of the program ordinarily begin with `10 00 00`: "The Global State == 0"
 
 ### Events
 
@@ -106,13 +106,15 @@ If you use a PL outside of 0x00 - 0x0F for a mouse event, then the location of t
 
 #### Ticks
 
-I suppose it would make sense to divide a second into 16 parts? So event 11 is after 1/16th of a second, and event 1F is after a whole second. 
+We divide a second into 16 parts. 
 
-Multiple seconds could be tracked by incrementing another counter after F ticks then checking the value of that as a precondition to the state machine, etc...
+So event 11 (A1T) is after 1/16th of a second, and event 1F (AFT) is after a whole second. 
+
+Multiple seconds can be tracked by incrementing another counter after F ticks then checking the value of that as a precondition to the state machine, etc...
 
 #### Key IDs
 
-Only a subset of keyboard keys will be registered:
+Only a subset of keyboard keys are registered:
 
 | Bit     | Description
 | ------- | -----------
@@ -139,21 +141,24 @@ When a keydown/up event happens, the key that was pressed is set into the keyboa
 
 ## Example Programs
 
-### Display modes
-
 Comments can be written after `;`
+
+### Display modes
 
 ```
 ;PL PM PX EV OP TG VL
- 10 00 00 00 00 05 01 ; Init (global 0 is 0) immediately set Grid 5 to 01
- 10 00 00 00 00 03 E0 ; Init - set right column grid value decoratively
+ 10 00 00 00 00 05 01 ; Init (global state is 0) immediately set Grid 5 to 01
+ 10 00 00 00 00 03 E0 ; Set right column decoratively
  10 00 00 00 00 07 FC ; 
  10 00 00 00 00 0B 1C ; 
  10 00 00 00 00 0F 03 ; 
+ 10 00 00 00 00 0C 61 ; Set bottom row decoratively
+ 10 00 00 00 00 0D 62 ; 
+ 10 00 00 00 00 0E 63 ; 
  10 00 00 00 02 10 01 ; End init by adding 1 to global state
- 05 00 02 21 02 05 01 ; When grid 5 is 0 to 2, and left clicked increment it
- 05 01 03 22 04 05 01 ; When grid 5 is 1 to 3, and right clicked decrement it
- 00 00 00 21 01 E0 05 ; When grid 0 is clicked, set the display mode to the value of grid 5
+ 05 00 02 21 02 05 01 ; When grid 5 is 0-2, and left clicked, increment it
+ 05 01 03 22 04 05 01 ; When grid 5 is 1-3, and right clicked, decrement it
+ 00 00 00 21 01 E0 05 ; When grid 0 is clicked, set display mode to value of grid 5
 ```
 
 Can also be written in assembly:
