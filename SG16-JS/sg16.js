@@ -39,16 +39,32 @@ class SG16VM {
         // Compile the program first (handles both assembly and bytecode)
         const bytecode = compile(programText);
         
-        for (const bytes of bytecode) {
-            this.program.push({
-                pl: bytes[0],
-                pm: bytes[1],
-                px: bytes[2],
-                ev: bytes[3],
-                op: bytes[4],
-                tg: bytes[5],
-                vl: bytes[6]
-            });
+        // Also parse original lines to extract comments
+        const lines = programText.split('\n');
+        let bytecodeIndex = 0;
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const commentMatch = line.match(/;\s*(.*)$/);
+            const hasCode = line.split(';')[0].trim().length > 0;
+            
+            if (hasCode && bytecodeIndex < bytecode.length) {
+                const bytes = bytecode[bytecodeIndex];
+                const comment = commentMatch ? commentMatch[1] : '';
+                
+                this.program.push({
+                    pl: bytes[0],
+                    pm: bytes[1],
+                    px: bytes[2],
+                    ev: bytes[3],
+                    op: bytes[4],
+                    tg: bytes[5],
+                    vl: bytes[6],
+                    comment: comment
+                });
+                
+                bytecodeIndex++;
+            }
         }
     }
 
@@ -116,7 +132,8 @@ class SG16VM {
         
         // Cap at 0x00 and 0xFF
         result = Math.max(0, Math.min(255, result));
-        console.log(`Executing OP ${op.toString(16).toUpperCase()} on TG ${tg.toString(16).toUpperCase()} with VL ${vl.toString(16).toUpperCase()}: Result = ${result.toString(16).toUpperCase()}`);
+        const comment = instruction.comment ? ` ; ${instruction.comment}` : '';
+        console.log(`OP ${op.toString(16).toUpperCase()} TG ${tg.toString(16).toUpperCase()} VL ${vl.toString(16).toUpperCase()} = ${result.toString(16).toUpperCase()}${comment}`);
         this.memory[tg] = result;
     }
 
@@ -132,7 +149,6 @@ class SG16VM {
                 
                 if (preconditionMet && !alreadyFired) {
                     // Precondition just became true, fire the event
-                    console.log(`Executing immediate instruction at PL ${instruction.pl.toString(16).toUpperCase()}`);
                     this.executeOperation(instruction);
                     this.immediateEvents.push(eventKey);
                 } else if (!preconditionMet && alreadyFired) {
@@ -195,8 +211,6 @@ class SG16VM {
             // Check if PL is this cell or "anywhere" (not in grid range)
             const plMatchesCell = instruction.pl === cellIndex;
             const plIsAnywhere = instruction.pl > 0x0F;
-            
-            console.log(`Mouse ${eventType} on cell ${cellIndex}, match? ${plMatchesCell || plIsAnywhere}`);
 
             if (plMatchesCell || plIsAnywhere) {
                 if (this.checkPrecondition(instruction)) {
