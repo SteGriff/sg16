@@ -116,12 +116,14 @@ class SG16VM {
         
         // Cap at 0x00 and 0xFF
         result = Math.max(0, Math.min(255, result));
+        console.log(`Executing OP ${op.toString(16).toUpperCase()} on TG ${tg.toString(16).toUpperCase()} with VL ${vl.toString(16).toUpperCase()}: Result = ${result.toString(16).toUpperCase()}`);
         this.memory[tg] = result;
     }
 
     executeImmediate() {
         for (const instruction of this.program) {
             if (instruction.ev === 0x00) { // IMM
+                console.log(`Executing immediate instruction at PL ${instruction.pl.toString(16).toUpperCase()}`);
                 if (this.checkPrecondition(instruction)) {
                     this.executeOperation(instruction);
                 }
@@ -167,6 +169,7 @@ class SG16VM {
         else if (eventType === 0x22) this.memory[0xE2] = 2;
         else if (eventType === 0x23) this.memory[0xE2] = 3;
         
+        // Only execute the first matching instruction per click event
         for (const instruction of this.program) {
             // Check if event matches
             const eventMatches = instruction.ev === eventType || 
@@ -178,9 +181,13 @@ class SG16VM {
             const plMatchesCell = instruction.pl === cellIndex;
             const plIsAnywhere = instruction.pl > 0x0F;
             
+            console.log(`Mouse ${eventType} on cell ${cellIndex}, match? ${plMatchesCell || plIsAnywhere}`);
+
             if (plMatchesCell || plIsAnywhere) {
                 if (this.checkPrecondition(instruction)) {
                     this.executeOperation(instruction);
+                    // Only execute first matching instruction per event
+                    break;
                 }
             }
         }
@@ -194,6 +201,7 @@ class SG16VM {
         
         const eventType = isKeyDown ? 0x30 : 0x40; // KDx or KUx base
         
+        // Only execute the first matching instruction per key event
         for (const instruction of this.program) {
             // Check if this is a key event
             const isKeyDownEvent = (instruction.ev & 0xF0) === 0x30;
@@ -209,6 +217,8 @@ class SG16VM {
             if (eventMatches && keyMatches) {
                 if (this.checkPrecondition(instruction)) {
                     this.executeOperation(instruction);
+                    // Only execute first matching instruction per event
+                    break;
                 }
             }
         }
