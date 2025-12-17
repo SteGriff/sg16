@@ -377,6 +377,10 @@ function initUI() {
     grid.addEventListener('click', () => {
         vm.focus();
     });
+
+    document.getElementById('gridContainer').addEventListener('click', () => {
+        vm.focus();
+    });
     
     // Unfocus VM when clicking on sidebar or program area
     document.querySelector('.sidebar').addEventListener('click', () => {
